@@ -181,7 +181,8 @@ function SetupScreen({onSave}){
 }
 
 function App(){
-  const [apiUrl,setApiUrl]=useState(()=>localStorage.getItem('iks-api-url')||'');
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzFDS6uW0MOOfHNws6cLt2FkNlKmXf_ArG6oygvmuA8CKwjjl5UwARUeSMKaoeq_0s3/exec';
+  const [apiUrl,setApiUrl]=useState(()=>localStorage.getItem('iks-api-url')||GAS_URL);
   const [cats,setCats]=useState([]);
   const [loading,setLoading]=useState(false);
   const [saving,setSaving]=useState(false);
