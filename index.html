@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IKS Dashboard Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --iks-blue:#1a40c8; --iks-copper:#c45a1a; --iks-copper-l:#d97232;
+      --bg:#f0f4fb; --surface:#ffffff; --nav-bg:#0f1e4a;
+      --border:rgba(26,64,200,0.1); --border2:rgba(26,64,200,0.18);
+      --text:#0f1f4a; --text2:#4a5a82; --text3:#8a9ab8;
+      --copper-dim:rgba(196,90,26,0.1); --blue-dim:rgba(26,64,200,0.07);
+      --font:'IBM Plex Sans Thai',sans-serif; --mono:'IBM Plex Mono',monospace;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;}
+    #root{min-height:100vh;}
+    input,textarea,select,button{font-family:var(--font);}
+    *{scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    .fade-in{animation:fadeIn 0.2s ease both;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spinner{width:26px;height:26px;border:2.5px solid var(--border2);border-top-color:var(--iks-blue);border-radius:50%;animation:spin 0.7s linear infinite;}
+    .error-box{background:#fff3f3;border:0.5px solid rgba(200,40,40,0.2);border-radius:10px;padding:1rem 1.25rem;color:#c82828;font-size:13px;margin-bottom:1rem;display:flex;align-items:center;gap:10px;}
+    .setup-wrap{max-width:560px;margin:3rem auto;padding:0 1rem;}
+    .setup-card{background:linear-gradient(135deg,#1a40c8,#122e96);color:#fff;border-radius:14px;padding:1.75rem;}
+    .setup-card h2{font-size:17px;font-weight:600;margin-bottom:6px;}
+    .setup-card p{font-size:13px;opacity:.8;line-height:1.7;margin-bottom:1.25rem;}
+    .setup-card label{font-size:10px;letter-spacing:.1em;opacity:.6;display:block;margin-bottom:4px;}
+    .setup-card input{width:100%;background:rgba(255,255,255,.13);border:.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:10px 13px;font-size:13px;outline:none;font-family:var(--font);}
+    .setup-card input::placeholder{color:rgba(255,255,255,.45);}
+    .setup-btn{background:#fff;color:#1a40c8;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;font-family:var(--font);}
+    .setup-note{background:#fff;border:.5px solid var(--border2);border-radius:10px;padding:1.25rem;margin-top:10px;font-size:13px;color:var(--text2);line-height:1.8;}
+    .setup-note strong{color:var(--text);}
+    .setup-note code{font-family:var(--mono);font-size:11px;background:#f0f4fb;padding:1px 5px;border-radius:3px;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// โหลด library จาก jsdelivr (primary) ถ้าล้มเหลวจะแจ้งเตือน
+window._libError = function(name) {
+  document.getElementById('root').innerHTML = 
+    '<div style="padding:2rem;font-family:sans-serif;color:#c82828;background:#fff3f3;border-radius:12px;margin:2rem;">' +
+    '<b>⚠️ โหลด '+name+' ไม่สำเร็จ</b><br>กรุณาตรวจสอบการเชื่อมต่ออินเตอร์เน็ต แล้วรีเฟรชหน้า (F5)<br>' +
+    '<button onclick="location.reload()" style="margin-top:1rem;padding:8px 16px;background:#1a40c8;color:#fff;border:none;border-radius:6px;cursor:pointer;">รีเฟรช</button>' +
+    '</div>';
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.10/babel.min.js" onerror="_libError('Babel')"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" onerror="_libError('React')"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" onerror="_libError('ReactDOM')"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback } = React;
+
+const CAT_COLORS = [
+  {bg:'rgba(26,64,200,0.07)',border:'rgba(26,64,200,0.22)',text:'#1a40c8',dot:'#5b8dee',label:'น้ำเงิน'},
+  {bg:'rgba(196,90,26,0.09)',border:'rgba(196,90,26,0.28)',text:'#c45a1a',dot:'#d97232',label:'Copper'},
+  {bg:'rgba(16,160,120,0.08)',border:'rgba(16,160,120,0.25)',text:'#0e9070',dot:'#30c8a8',label:'เขียว'},
+  {bg:'rgba(130,80,200,0.08)',border:'rgba(130,80,200,0.22)',text:'#7830c8',dot:'#a870e8',label:'ม่วง'},
+  {bg:'rgba(200,40,100,0.07)',border:'rgba(200,40,100,0.22)',text:'#c02860',dot:'#e06090',label:'ชมพู'},
+  {bg:'rgba(20,140,200,0.08)',border:'rgba(20,140,200,0.22)',text:'#0e7ab8',dot:'#40aee0',label:'ฟ้า'},
+];
+
+const S = {
+  overlay:{position:'fixed',inset:0,background:'rgba(10,20,60,0.45)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'},
+  modal:{background:'#fff',borderRadius:14,padding:'1.75rem',width:'100%',maxWidth:460,boxShadow:'0 8px 40px rgba(10,20,60,0.18)'},
+  label:{display:'block',fontSize:11,fontWeight:600,color:'#6a7a9a',marginBottom:5,letterSpacing:'0.05em',textTransform:'uppercase'},
+  input:{width:'100%',background:'#f4f7fc',border:'0.5px solid rgba(26,64,200,0.18)',borderRadius:7,padding:'9px 12px',color:'#0f1f4a',fontSize:14,outline:'none',fontFamily:"'IBM Plex Sans Thai',sans-serif"},
+  btn:{border:'0.5px solid rgba(26,64,200,0.2)',background:'#f4f7fc',color:'#0f1f4a',borderRadius:7,padding:'9px 18px',cursor:'pointer',fontSize:13,fontWeight:500,fontFamily:"'IBM Plex Sans Thai',sans-serif"},
+  btnPrimary:{background:'#1a40c8',border:'none',color:'#fff',borderRadius:7,padding:'9px 18px',cursor:'pointer',fontSize:13,fontWeight:500,fontFamily:"'IBM Plex Sans Thai',sans-serif"},
+  btnDanger:{background:'rgba(200,40,40,0.08)',border:'0.5px solid rgba(200,40,40,0.3)',color:'#c82828',borderRadius:7,padding:'9px 18px',cursor:'pointer',fontSize:13,fontWeight:500,fontFamily:"'IBM Plex Sans Thai',sans-serif"},
+};
+
+function uid(){return 'x'+Math.random().toString(36).slice(2,9);}
+
+// ── API: ทุก request ใช้ GET + query param เพื่อเลี่ยง CORS issue ──
+async function apiGet(apiUrl){
+  const res = await fetch(apiUrl+'?action=getData&t='+Date.now());
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return res.json();
+}
+async function apiSave(apiUrl, categories){
+  const encoded = encodeURIComponent(JSON.stringify(categories));
+  const res = await fetch(apiUrl+'?action=saveData&categories='+encoded+'&t='+Date.now());
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return res.json();
+}
+
+function Modal({title,onClose,children}){
+  return(
+    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={S.modal} className="fade-in">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+          <span style={{fontWeight:600,fontSize:16,color:'#0f1f4a'}}>{title}</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'#8a9ab8',cursor:'pointer',fontSize:22,lineHeight:1}}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+function Field({label,children}){return <div style={{marginBottom:'1rem'}}><label style={S.label}>{label}</label>{children}</div>;}
+function StatCard({num,label,color}){
+  return(
+    <div style={{background:'#fff',border:'0.5px solid rgba(26,64,200,0.12)',borderRadius:10,padding:'14px 16px'}}>
+      <div style={{fontSize:28,fontWeight:700,fontFamily:'var(--mono)',color,lineHeight:1}}>{num}</div>
+      <div style={{fontSize:12,color:'#6a7a9a',marginTop:5}}>{label}</div>
+    </div>
+  );
+}
+function NavItem({active,onClick,dot,count,children}){
+  return(
+    <div onClick={onClick} style={{display:'flex',alignItems:'center',gap:9,padding:'8px 16px',fontSize:13,cursor:'pointer',color:active?'#fff':'rgba(255,255,255,0.5)',background:active?'rgba(255,255,255,0.1)':'transparent',borderRight:active?'2px solid #d97232':'2px solid transparent',transition:'all 0.1s'}}
+      onMouseEnter={e=>{if(!active){e.currentTarget.style.background='rgba(255,255,255,0.05)';e.currentTarget.style.color='rgba(255,255,255,0.75)';}}}
+      onMouseLeave={e=>{if(!active){e.currentTarget.style.background='transparent';e.currentTarget.style.color='rgba(255,255,255,0.5)';}}}
+    >
+      <span style={{width:7,height:7,borderRadius:'50%',background:dot,flexShrink:0}}/>
+      <span style={{flex:1}}>{children}</span>
+      <span style={{fontSize:10,color:'rgba(255,255,255,0.25)',fontFamily:'var(--mono)'}}>{count}</span>
+    </div>
+  );
+}
+function ActBtn({children,onClick,color,sm,disabled,title}){
+  return(
+    <button title={title} onClick={onClick} disabled={disabled} style={{background:'none',border:'none',color:color||'#8a9ab8',cursor:disabled?'not-allowed':'pointer',fontSize:12,padding:sm?'2px 4px':'3px 7px',opacity:disabled?0.3:1,lineHeight:1,borderRadius:4,transition:'background 0.1s',fontFamily:'var(--font)',fontWeight:500}}
+      onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background='rgba(26,64,200,0.07)';}}
+      onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+    >{children}</button>
+  );
+}
+
+function SetupScreen({onSave}){
+  const [url,setUrl]=useState('');
+  const [testing,setTesting]=useState(false);
+  const [err,setErr]=useState('');
+
+  const handleSave = async () => {
+    const u = url.trim();
+    if(!u) return;
+    if(!u.includes('script.google.com')){
+      setErr('URL ต้องเป็น script.google.com เท่านั้น'); return;
+    }
+    setTesting(true); setErr('');
+    try {
+      const res = await apiGet(u);
+      if(res.ok) onSave(u);
+      else setErr('เชื่อมต่อได้แต่ได้รับ error: '+res.error);
+    } catch(e){
+      setErr('เชื่อมต่อไม่ได้: '+e.message+'\n→ ตรวจสอบว่า Deploy ตั้ง "Who has access: Anyone" แล้วหรือยัง');
+    } finally { setTesting(false); }
+  };
+
+  return(
+    <div className="setup-wrap">
+      <div className="setup-card">
+        <h2>⚙️ ตั้งค่า Google Sheet API</h2>
+        <p>วาง URL ของ Google Apps Script Web App ที่ deploy ไว้ เพื่อให้ Portal ดึงข้อมูลจาก Google Sheet</p>
+        {err && <div style={{background:'rgba(255,100,100,0.2)',border:'.5px solid rgba(255,150,150,0.4)',borderRadius:7,padding:'8px 12px',fontSize:12,marginBottom:10,lineHeight:1.6,whiteSpace:'pre-line'}}>{err}</div>}
+        <label>APPS SCRIPT URL</label>
+        <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/XXXXX/exec"
+          onKeyDown={e=>e.key==='Enter'&&handleSave()} />
+        <button className="setup-btn" onClick={handleSave} disabled={testing} style={{opacity:testing?0.7:1}}>
+          {testing?'กำลังทดสอบ...':'บันทึกและเชื่อมต่อ →'}
+        </button>
+      </div>
+      <div className="setup-note">
+        <strong>วิธีสร้าง Apps Script</strong><br/>
+        1. เปิด Google Sheet ใหม่ → <strong>Extensions › Apps Script</strong><br/>
+        2. วางโค้ดจากไฟล์ <code>Code.gs</code> ทั้งหมด<br/>
+        3. กด <strong>Deploy › New deployment › Web app</strong><br/>
+        4. Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong><br/>
+        5. Copy URL มาวางด้านบน
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [apiUrl,setApiUrl]=useState(()=>localStorage.getItem('iks-api-url')||'');
+  const [cats,setCats]=useState([]);
+  const [loading,setLoading]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState('');
+  const [search,setSearch]=useState('');
+  const [activeCat,setActiveCat]=useState('all');
+  const [modal,setModal]=useState(null);
+  const [form,setForm]=useState({});
+  const [del,setDel]=useState(null);
+
+  const loadData = useCallback(async()=>{
+    if(!apiUrl) return;
+    setLoading(true); setError('');
+    try{
+      const res = await apiGet(apiUrl);
+      if(res.ok) setCats(res.data||[]);
+      else setError('โหลดข้อมูลไม่สำเร็จ: '+res.error);
+    }catch(e){ setError('เชื่อมต่อ API ไม่ได้: '+e.message); }
+    finally{ setLoading(false); }
+  },[apiUrl]);
+
+  useEffect(()=>{ if(apiUrl) loadData(); },[apiUrl]);
+
+  const save = async newCats => {
+    setCats(newCats);
+    setSaving(true);
+    try{
+      const res = await apiSave(apiUrl, newCats);
+      if(!res.ok) setError('บันทึกไม่สำเร็จ: '+res.error);
+    }catch(e){ setError('บันทึกไม่สำเร็จ: '+e.message); }
+    finally{ setSaving(false); }
+  };
+
+  const setF = p => setForm(f=>({...f,...p}));
+
+  const openAddCat  = ()    => { setForm({name:'',colorIdx:0}); setModal('add-cat'); };
+  const openEditCat = cat   => { setForm({...cat});              setModal('edit-cat'); };
+  const saveCat = () => {
+    if(!form.name?.trim()) return;
+    let nc;
+    if(modal==='add-cat') nc=[...cats,{id:uid(),name:form.name,colorIdx:+form.colorIdx,items:[]}];
+    else nc=cats.map(c=>c.id===form.id?{...c,name:form.name,colorIdx:+form.colorIdx}:c);
+    save(nc); setModal(null);
+  };
+  const deleteCat = id => { save(cats.filter(c=>c.id!==id)); setDel(null); };
+  const moveCat = (idx,dir) => {
+    const a=[...cats],t=idx+dir;
+    if(t<0||t>=a.length) return;
+    [a[idx],a[t]]=[a[t],a[idx]]; save(a);
+  };
+  const openAddItem  = catId => { setForm({catId,name:'',desc:'',url:'https://',badge:''}); setModal('add-item'); };
+  const openEditItem = (catId,item) => { setForm({catId,...item}); setModal('edit-item'); };
+  const saveItem = () => {
+    if(!form.name?.trim()||!form.url?.trim()) return;
+    const item={id:form.id||uid(),name:form.name,desc:form.desc||'',url:form.url,badge:form.badge||''};
+    const nc=cats.map(c=>{
+      if(c.id!==form.catId) return c;
+      if(modal==='add-item') return {...c,items:[...c.items,item]};
+      return {...c,items:c.items.map(i=>i.id===item.id?item:i)};
+    });
+    save(nc); setModal(null);
+  };
+  const deleteItem=(catId,itemId)=>{ save(cats.map(c=>c.id===catId?{...c,items:c.items.filter(i=>i.id!==itemId)}:c)); setDel(null); };
+  const moveItem=(catId,idx,dir)=>{
+    save(cats.map(c=>{
+      if(c.id!==catId) return c;
+      const items=[...c.items],t=idx+dir;
+      if(t<0||t>=items.length) return c;
+      [items[idx],items[t]]=[items[t],items[idx]]; return {...c,items};
+    }));
+  };
+
+  if(!apiUrl) return <SetupScreen onSave={u=>{localStorage.setItem('iks-api-url',u);setApiUrl(u);}}/>;
+
+  const q=search.trim().toLowerCase();
+  const visibleCats=cats
+    .filter(c=>activeCat==='all'||c.id===activeCat)
+    .map(c=>({...c,items:q?c.items.filter(i=>i.name.toLowerCase().includes(q)||i.desc?.toLowerCase().includes(q)):c.items}))
+    .filter(c=>q?c.items.length>0:true);
+  const totalItems=cats.reduce((n,c)=>n+c.items.length,0);
+  const liveItems=cats.flatMap(c=>c.items).filter(i=>i.badge&&['live','real-time','realtime'].includes(i.badge.toLowerCase())).length;
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',minHeight:'100vh'}}>
+
+      {/* HEADER */}
+      <header style={{background:'#fff',borderBottom:'0.5px solid rgba(26,64,200,0.14)',padding:'0 24px',display:'flex',alignItems:'center',gap:16,height:58,flexShrink:0,position:'sticky',top:0,zIndex:100,boxShadow:'0 1px 8px rgba(26,64,200,0.06)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+          <div style={{width:36,height:36,borderRadius:9,background:'#1a40c8',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:600,color:'#fff'}}>IKS</span>
+          </div>
+          <div>
+            <div style={{fontSize:14,fontWeight:600,color:'#1a40c8',lineHeight:1.2}}>Dashboard Portal</div>
+            <div style={{fontSize:11,color:'#8a9ab8'}}>อีซูซุกรุงเทพเซลส์</div>
+          </div>
+        </div>
+        <div style={{width:'0.5px',height:28,background:'rgba(26,64,200,0.14)',flexShrink:0}}/>
+        <div style={{flex:1,display:'flex',alignItems:'center',gap:8,background:'#f4f7fc',border:'0.5px solid rgba(26,64,200,0.16)',borderRadius:8,padding:'7px 13px',maxWidth:420}}>
+          <svg width="13" height="13" fill="none" stroke="#8a9ab8" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหา dashboard..." style={{background:'none',border:'none',outline:'none',color:'#0f1f4a',fontSize:13,width:'100%'}}/>
+          {search&&<button onClick={()=>setSearch('')} style={{background:'none',border:'none',color:'#8a9ab8',cursor:'pointer',fontSize:18,lineHeight:1,padding:0}}>×</button>}
+        </div>
+        <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
+          {saving&&<span style={{fontSize:12,color:'#8a9ab8'}}>กำลังบันทึก...</span>}
+          <button onClick={loadData} style={{...S.btn,padding:'7px 12px',fontSize:12,display:'flex',alignItems:'center',gap:5}}>
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+            รีโหลด
+          </button>
+          <button onClick={openAddCat} style={{...S.btnPrimary,display:'flex',alignItems:'center',gap:6,padding:'8px 16px',borderRadius:8}}>
+            <span style={{fontSize:16,lineHeight:1}}>+</span> เพิ่มหมวดหมู่
+          </button>
+        </div>
+      </header>
+
+      <div style={{display:'flex',flex:1}}>
+        {/* SIDEBAR */}
+        <aside style={{width:200,background:'#0f1e4a',flexShrink:0,display:'flex',flexDirection:'column',padding:'1.25rem 0',position:'sticky',top:58,height:'calc(100vh - 58px)',overflowY:'auto'}}>
+          <div style={{fontSize:9,color:'rgba(255,255,255,0.3)',letterSpacing:'0.12em',fontWeight:600,padding:'0 16px',marginBottom:6,textTransform:'uppercase',fontFamily:'var(--mono)'}}>หมวดหมู่</div>
+          <NavItem active={activeCat==='all'} onClick={()=>{setActiveCat('all');setSearch('');}} dot="#fff" count={totalItems}>ทั้งหมด</NavItem>
+          {cats.map(cat=>{
+            const col=CAT_COLORS[cat.colorIdx]||CAT_COLORS[0];
+            return <NavItem key={cat.id} active={activeCat===cat.id} onClick={()=>{setActiveCat(cat.id);setSearch('');}} dot={col.dot} count={cat.items.length}>{cat.name}</NavItem>;
+          })}
+          <div style={{borderTop:'0.5px solid rgba(255,255,255,0.08)',margin:'12px 0'}}/>
+          <div style={{fontSize:9,color:'rgba(255,255,255,0.3)',letterSpacing:'0.12em',fontWeight:600,padding:'0 16px',marginBottom:6,textTransform:'uppercase',fontFamily:'var(--mono)'}}>จัดการ</div>
+          {[
+            {icon:'⚙',label:'เปลี่ยน API URL',fn:()=>{localStorage.removeItem('iks-api-url');setApiUrl('');}},
+            {icon:'↻',label:'รีโหลดจาก Sheet',fn:loadData},
+          ].map(({icon,label,fn})=>(
+            <div key={label} onClick={fn} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 16px',fontSize:12,color:'rgba(255,255,255,0.38)',cursor:'pointer'}}
+              onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.65)'}
+              onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.38)'}
+            ><span>{icon}</span>{label}</div>
+          ))}
+          <div style={{marginTop:'auto',padding:'10px 14px',borderTop:'0.5px solid rgba(255,255,255,0.06)'}}>
+            <div style={{fontSize:9,color:'rgba(255,255,255,0.2)',fontFamily:'var(--mono)',marginBottom:3}}>CONNECTED</div>
+            <div style={{fontSize:9,color:'rgba(255,255,255,0.3)',wordBreak:'break-all',lineHeight:1.4,fontFamily:'var(--mono)'}}>{apiUrl.slice(0,50)}...</div>
+          </div>
+        </aside>
+
+        {/* MAIN */}
+        <main style={{flex:1,padding:'1.5rem 2rem',overflowY:'auto'}}>
+          {error&&(
+            <div className="error-box">
+              ⚠️ <span style={{flex:1}}>{error}</span>
+              <button onClick={()=>setError('')} style={{background:'none',border:'none',cursor:'pointer',color:'#c82828',fontWeight:600,fontSize:16}}>×</button>
+            </div>
+          )}
+          {loading?(
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:300,gap:12,color:'#8a9ab8'}}>
+              <div className="spinner"/>
+              <span style={{fontSize:13}}>กำลังโหลดข้อมูลจาก Google Sheet...</span>
+            </div>
+          ):(
+            <>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:'1.75rem'}}>
+                <StatCard num={cats.length}  label="หมวดหมู่"         color="#1a40c8"/>
+                <StatCard num={totalItems}   label="dashboard ทั้งหมด" color="#0f1f4a"/>
+                <StatCard num={liveItems}    label="Live / Real-time"  color="#c45a1a"/>
+              </div>
+              {visibleCats.length===0&&(
+                <div style={{textAlign:'center',color:'#8a9ab8',padding:'3rem 0',fontSize:14}}>
+                  {q?`ไม่พบ dashboard ที่ตรงกับ "${search}"`:'ยังไม่มี dashboard — กด + เพิ่มหมวดหมู่ เพื่อเริ่มต้น'}
+                </div>
+              )}
+              {visibleCats.map((cat,catIdx)=>{
+                const col=CAT_COLORS[cat.colorIdx]||CAT_COLORS[0];
+                const realIdx=cats.findIndex(c=>c.id===cat.id);
+                return(
+                  <div key={cat.id} className="fade-in" style={{marginBottom:'2rem',animationDelay:`${catIdx*0.04}s`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                      <span style={{fontSize:10,fontWeight:700,letterSpacing:'0.08em',background:col.bg,border:`0.5px solid ${col.border}`,color:col.text,borderRadius:5,padding:'3px 11px',fontFamily:'var(--mono)',textTransform:'uppercase'}}>{cat.name}</span>
+                      <span style={{fontSize:12,color:'#8a9ab8'}}>{cat.items.length} รายการ</span>
+                      {!q&&(
+                        <div style={{marginLeft:'auto',display:'flex',gap:3,alignItems:'center'}}>
+                          <ActBtn title="เลื่อนขึ้น"  disabled={realIdx===0}               onClick={()=>moveCat(realIdx,-1)}>↑</ActBtn>
+                          <ActBtn title="เลื่อนลง"   disabled={realIdx===cats.length-1}    onClick={()=>moveCat(realIdx,1)}>↓</ActBtn>
+                          <ActBtn title="แก้ไขหมวด"  color="#1a40c8" onClick={()=>openEditCat(cats[realIdx])}>✎</ActBtn>
+                          <ActBtn title="เพิ่ม"       color="#1a40c8" onClick={()=>openAddItem(cat.id)}>+ เพิ่ม</ActBtn>
+                          <ActBtn title="ลบหมวด"     color="#c82828" onClick={()=>setDel({type:'cat',id:cat.id,name:cat.name})}>✕</ActBtn>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
+                      {cat.items.map((item,itemIdx)=>(
+                        <div key={item.id} style={{background:'#fff',border:'0.5px solid rgba(26,64,200,0.12)',borderRadius:10,padding:'14px',display:'flex',flexDirection:'column',gap:5,transition:'border-color 0.15s,transform 0.15s'}}
+                          onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(26,64,200,0.32)';e.currentTarget.style.transform='translateY(-1px)';}}
+                          onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(26,64,200,0.12)';e.currentTarget.style.transform='translateY(0)';}}
+                        >
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6}}>
+                            <span style={{fontSize:13,fontWeight:600,color:'#0f1f4a',lineHeight:1.35,flex:1}}>{item.name}</span>
+                            {!q&&(
+                              <div style={{display:'flex',gap:2,flexShrink:0}}>
+                                <ActBtn sm title="เลื่อนซ้าย" disabled={itemIdx===0}                onClick={()=>moveItem(cat.id,itemIdx,-1)}>‹</ActBtn>
+                                <ActBtn sm title="เลื่อนขวา" disabled={itemIdx===cat.items.length-1} onClick={()=>moveItem(cat.id,itemIdx,1)}>›</ActBtn>
+                                <ActBtn sm title="แก้ไข"     color="#1a40c8" onClick={()=>openEditItem(cat.id,item)}>✎</ActBtn>
+                                <ActBtn sm title="ลบ"        color="#c82828" onClick={()=>setDel({type:'item',catId:cat.id,itemId:item.id,name:item.name})}>✕</ActBtn>
+                              </div>
+                            )}
+                          </div>
+                          {item.desc&&<p style={{fontSize:11,color:'#6a7a9a',lineHeight:1.55}}>{item.desc}</p>}
+                          <div style={{marginTop:'auto',display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:10,borderTop:'0.5px solid rgba(26,64,200,0.08)'}}>
+                            {item.badge?<span style={{fontSize:10,background:col.bg,color:col.text,border:`0.5px solid ${col.border}`,borderRadius:4,padding:'2px 8px',fontFamily:'var(--mono)',fontWeight:600}}>{item.badge}</span>:<span/>}
+                            <a href={item.url} target="_blank" rel="noreferrer" style={{fontSize:12,fontWeight:600,color:'#1a40c8',background:'rgba(26,64,200,0.07)',border:'0.5px solid rgba(26,64,200,0.2)',borderRadius:6,padding:'5px 12px',textDecoration:'none',display:'flex',alignItems:'center',gap:5,transition:'background 0.15s'}}
+                              onMouseEnter={e=>e.currentTarget.style.background='rgba(26,64,200,0.14)'}
+                              onMouseLeave={e=>e.currentTarget.style.background='rgba(26,64,200,0.07)'}
+                            >เปิด <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </main>
+      </div>
+
+      {/* MODALS */}
+      {(modal==='add-cat'||modal==='edit-cat')&&(
+        <Modal title={modal==='add-cat'?'เพิ่มหมวดหมู่ใหม่':'แก้ไขหมวดหมู่'} onClose={()=>setModal(null)}>
+          <Field label="ชื่อหมวดหมู่ *"><input autoFocus style={S.input} value={form.name||''} onChange={e=>setF({name:e.target.value})} placeholder="เช่น ยอดขาย, Facebook Ads" onKeyDown={e=>e.key==='Enter'&&saveCat()}/></Field>
+          <Field label="สีประจำหมวดหมู่">
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {CAT_COLORS.map((c,i)=>(
+                <button key={i} onClick={()=>setF({colorIdx:i})} style={{background:c.bg,border:`1.5px solid ${+form.colorIdx===i?c.text:c.border}`,color:c.text,borderRadius:6,padding:'5px 12px',cursor:'pointer',fontSize:12,fontFamily:'var(--font)',fontWeight:+form.colorIdx===i?600:400}}>{c.label}</button>
+              ))}
+            </div>
+          </Field>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:'1.25rem'}}>
+            <button style={S.btn} onClick={()=>setModal(null)}>ยกเลิก</button>
+            <button style={S.btnPrimary} onClick={saveCat}>บันทึก</button>
+          </div>
+        </Modal>
+      )}
+      {(modal==='add-item'||modal==='edit-item')&&(
+        <Modal title={modal==='add-item'?'เพิ่ม Dashboard':'แก้ไข Dashboard'} onClose={()=>setModal(null)}>
+          <Field label="ชื่อ Dashboard *"><input autoFocus style={S.input} value={form.name||''} onChange={e=>setF({name:e.target.value})} placeholder="เช่น MTD Sales Report"/></Field>
+          <Field label="URL *"><input style={S.input} value={form.url||''} onChange={e=>setF({url:e.target.value})} placeholder="https://your-app.vercel.app"/></Field>
+          <Field label="คำอธิบาย (ไม่บังคับ)"><input style={S.input} value={form.desc||''} onChange={e=>setF({desc:e.target.value})} placeholder="อธิบายสั้นๆ ว่า dashboard นี้ทำอะไร"/></Field>
+          <Field label="Badge (ไม่บังคับ)"><input style={S.input} value={form.badge||''} onChange={e=>setF({badge:e.target.value})} placeholder="เช่น Live, Real-time, OMO"/></Field>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:'1.25rem'}}>
+            <button style={S.btn} onClick={()=>setModal(null)}>ยกเลิก</button>
+            <button style={S.btnPrimary} onClick={saveItem}>บันทึก</button>
+          </div>
+        </Modal>
+      )}
+      {del&&(
+        <Modal title="ยืนยันการลบ" onClose={()=>setDel(null)}>
+          <p style={{fontSize:14,color:'#4a5a82',lineHeight:1.7,marginBottom:'1.25rem'}}>ลบ <strong style={{color:'#0f1f4a'}}>"{del.name}"</strong>{del.type==='cat'?' และ dashboard ทั้งหมดในหมวดนี้ออก?':'?'}</p>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+            <button style={S.btn} onClick={()=>setDel(null)}>ยกเลิก</button>
+            <button style={S.btnDanger} onClick={()=>del.type==='cat'?deleteCat(del.id):deleteItem(del.catId,del.itemId)}>ลบออก</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
