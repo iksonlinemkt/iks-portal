@@ -193,12 +193,20 @@ function App(){
   const [form,setForm]=useState({});
   const [del,setDel]=useState(null);
 
-  const loadData = useCallback(async()=>{
+  const loadData = useCallback(async(resetCat=false)=>{
     if(!apiUrl) return;
     setLoading(true); setError('');
+    if(resetCat) setActiveCat('all');
     try{
       const res = await apiGet(apiUrl);
-      if(res.ok) setCats(res.data||[]);
+      if(res.ok) {
+        const data=(res.data||[]).map((cat,ci)=>({
+          ...cat,
+          id:'cat_'+ci+'_'+String(cat.name).replace(/[^a-zA-Z0-9ก-๙]/g,'_'),
+          items:(cat.items||[]).map((item,ii)=>({...item,id:'item_'+ci+'_'+ii}))
+        }));
+        setCats(data);
+      }
       else setError('โหลดข้อมูลไม่สำเร็จ: '+res.error);
     }catch(e){ setError('เชื่อมต่อ API ไม่ได้: '+e.message); }
     finally{ setLoading(false); }
