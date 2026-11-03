@@ -96,9 +96,9 @@ function apiSave(apiUrl,categories){
   return jsonp(apiUrl+'?action=saveData&categories='+encoded+'&t='+Date.now());
 }
 
-function Modal({title,onClose,children}){
+function Modal({title,onClose,children,noOverlayClose}){
   return(
-    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={S.overlay} onClick={e=>{ if(!noOverlayClose && e.target===e.currentTarget) onClose(); }}>
       <div style={S.modal} className="fade-in">
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
           <span style={{fontWeight:600,fontSize:16,color:'#0f1f4a'}}>{title}</span>
@@ -315,9 +315,19 @@ function App(){
         <aside style={{width:200,background:'#0f1e4a',flexShrink:0,display:'flex',flexDirection:'column',padding:'1.25rem 0',position:'sticky',top:58,height:'calc(100vh - 58px)',overflowY:'auto'}}>
           <div style={{fontSize:9,color:'rgba(255,255,255,0.3)',letterSpacing:'0.12em',fontWeight:600,padding:'0 16px',marginBottom:6,textTransform:'uppercase',fontFamily:'var(--mono)'}}>หมวดหมู่</div>
           <NavItem active={activeCat==='all'} onClick={()=>{setActiveCat('all');setSearch('');}} dot="#fff" count={totalItems}>ทั้งหมด</NavItem>
-          {cats.map(cat=>{
+          {cats.map((cat,ci)=>{
             const col=CAT_COLORS[cat.colorIdx]||CAT_COLORS[0];
-            return <NavItem key={cat.id} active={activeCat===cat.id} onClick={()=>{setActiveCat(cat.id);setSearch('');}} dot={col.dot} count={cat.items.length}>{cat.name}</NavItem>;
+            return(
+              <div key={cat.id} style={{display:'flex',alignItems:'center',paddingRight:4}}>
+                <div style={{flex:1}} onClick={()=>{setActiveCat(cat.id);setSearch('');}}>
+                  <NavItem active={activeCat===cat.id} dot={col.dot} count={cat.items.length}>{cat.name}</NavItem>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:1,flexShrink:0}}>
+                  <button onClick={()=>moveCat(ci,-1)} disabled={ci===0} title="เลื่อนขึ้น" style={{background:'none',border:'none',color:ci===0?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.35)',cursor:ci===0?'not-allowed':'pointer',fontSize:9,lineHeight:1,padding:'1px 3px'}}>▲</button>
+                  <button onClick={()=>moveCat(ci,1)} disabled={ci===cats.length-1} title="เลื่อนลง" style={{background:'none',border:'none',color:ci===cats.length-1?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.35)',cursor:ci===cats.length-1?'not-allowed':'pointer',fontSize:9,lineHeight:1,padding:'1px 3px'}}>▼</button>
+                </div>
+              </div>
+            );
           })}
           <div style={{borderTop:'0.5px solid rgba(255,255,255,0.08)',margin:'12px 0'}}/>
           <div style={{fontSize:9,color:'rgba(255,255,255,0.3)',letterSpacing:'0.12em',fontWeight:600,padding:'0 16px',marginBottom:6,textTransform:'uppercase',fontFamily:'var(--mono)'}}>จัดการ</div>
@@ -433,7 +443,7 @@ function App(){
         </Modal>
       )}
       {(modal==='add-item'||modal==='edit-item')&&(
-        <Modal title={modal==='add-item'?'เพิ่ม Dashboard':'แก้ไข Dashboard'} onClose={()=>setModal(null)}>
+        <Modal title={modal==='add-item'?'เพิ่ม Dashboard':'แก้ไข Dashboard'} onClose={()=>setModal(null)} noOverlayClose>
           <Field label="ชื่อ Dashboard *"><input autoFocus style={S.input} value={form.name||''} onChange={e=>setF({name:e.target.value})} placeholder="เช่น MTD Sales Report"/></Field>
           <Field label="URL *"><input style={S.input} value={form.url||''} onChange={e=>setF({url:e.target.value})} placeholder="https://your-app.vercel.app"/></Field>
           <Field label="คำอธิบาย (ไม่บังคับ)"><input style={S.input} value={form.desc||''} onChange={e=>setF({desc:e.target.value})} placeholder="อธิบายสั้นๆ ว่า dashboard นี้ทำอะไร"/></Field>
