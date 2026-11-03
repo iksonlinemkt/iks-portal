@@ -247,15 +247,26 @@ function App(){
     [a[idx],a[t]]=[a[t],a[idx]]; save(a);
   };
   const openAddItem  = catId => { setForm({catId,name:'',desc:'',url:'https://',badge:''}); setModal('add-item'); };
-  const openEditItem = (catId,item) => { setForm({catId,...item}); setModal('edit-item'); };
+  const openEditItem = (catId,item) => { setForm({catId,targetCatId:catId,...item}); setModal('edit-item'); };
   const saveItem = () => {
     if(!form.name?.trim()||!form.url?.trim()) return;
     const item={id:form.id||uid(),name:form.name,desc:form.desc||'',url:form.url,badge:form.badge||''};
-    const nc=cats.map(c=>{
-      if(c.id!==form.catId) return c;
-      if(modal==='add-item') return {...c,items:[...c.items,item]};
-      return {...c,items:c.items.map(i=>i.id===item.id?item:i)};
-    });
+    const targetCatId = form.targetCatId || form.catId;
+    let nc;
+    if(modal==='add-item'){
+      nc=cats.map(c=>c.id===targetCatId?{...c,items:[...c.items,item]}:c);
+    } else {
+      // ถ้าย้ายหมวด: ลบออกจากหมวดเดิม แล้วเพิ่มในหมวดใหม่
+      if(targetCatId !== form.catId){
+        nc=cats.map(c=>{
+          if(c.id===form.catId) return {...c,items:c.items.filter(i=>i.id!==item.id)};
+          if(c.id===targetCatId) return {...c,items:[...c.items,item]};
+          return c;
+        });
+      } else {
+        nc=cats.map(c=>c.id===form.catId?{...c,items:c.items.map(i=>i.id===item.id?item:i)}:c);
+      }
+    }
     save(nc); setModal(null);
   };
   const deleteItem=(catId,itemId)=>{ save(cats.map(c=>c.id===catId?{...c,items:c.items.filter(i=>i.id!==itemId)}:c)); setDel(null); };
@@ -448,6 +459,18 @@ function App(){
           <Field label="URL *"><input style={S.input} value={form.url||''} onChange={e=>setF({url:e.target.value})} placeholder="https://your-app.vercel.app"/></Field>
           <Field label="คำอธิบาย (ไม่บังคับ)"><input style={S.input} value={form.desc||''} onChange={e=>setF({desc:e.target.value})} placeholder="อธิบายสั้นๆ ว่า dashboard นี้ทำอะไร"/></Field>
           <Field label="Badge (ไม่บังคับ)"><input style={S.input} value={form.badge||''} onChange={e=>setF({badge:e.target.value})} placeholder="เช่น Live, Real-time, OMO"/></Field>
+          <Field label="หมวดหมู่">
+            <select style={{...S.input,cursor:'pointer'}} value={form.targetCatId||form.catId} onChange={e=>setF({targetCatId:e.target.value})}>
+              {cats.map(c=>(
+                <option key={c.id} value={c.id}>{c.name}{c.id===form.catId?' (หมวดปัจจุบัน)':''}</option>
+              ))}
+            </select>
+            {form.targetCatId && form.targetCatId!==form.catId && (
+              <div style={{marginTop:5,fontSize:11,color:'#c45a1a',fontWeight:500}}>
+                ⚠ จะย้ายไปหมวด "{cats.find(c=>c.id===form.targetCatId)?.name}"
+              </div>
+            )}
+          </Field>
           <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:'1.25rem'}}>
             <button style={S.btn} onClick={()=>setModal(null)}>ยกเลิก</button>
             <button style={S.btnPrimary} onClick={saveItem}>บันทึก</button>
